@@ -10,11 +10,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-
 # Download Rerun SDK
 include(FetchContent)
 FetchContent_Declare(
@@ -23,9 +18,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(rerun_sdk)
 
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(rerun_sdk REQUIRED)
+
 # The node. Require C99 and C++17.
 add_executable(insider src/main.cpp)
 target_compile_features(insider PUBLIC c_std_99 cxx_std_17)
+target_link_libraries(insider rerun_sdk)
 ament_target_dependencies(insider rclcpp sensor_msgs)
 
 # Installation
