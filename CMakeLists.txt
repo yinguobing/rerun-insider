@@ -22,7 +22,6 @@ FetchContent_MakeAvailable(rerun_sdk)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(rerun_sdk REQUIRED)
 
 # The node. Require C99 and C++17.
 add_executable(insider src/main.cpp)
