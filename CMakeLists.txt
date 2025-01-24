@@ -1,24 +1,39 @@
-cmake_minimum_required(VERSION 3.8)
-project(rerun-insider)
+cmake_minimum_required(VERSION 3.16...3.27)
+project(rerun-insider LANGUAGES CXX)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Build options
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+# Download Rerun SDK
+include(FetchContent)
+FetchContent_Declare(
+  rerun_sdk
+  URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
+)
+FetchContent_MakeAvailable(rerun_sdk)
+
+# The node. Require C99 and C++17.
+add_executable(insider src/main.cpp)
+target_compile_features(insider PUBLIC c_std_99 cxx_std_17)
+ament_target_dependencies(insider rclcpp sensor_msgs)
+
+# Installation
+install(TARGETS insider DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
