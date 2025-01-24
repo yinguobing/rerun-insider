@@ -14,8 +14,9 @@ public:
   RosInsider() : Node("ros_insider") {
     // Init rerun client
     rec = new rerun::RecordingStream("rerun-insider");
-    // Try to spawn a new viewer instance.
-    rec->spawn().exit_on_failure();
+
+    // Try to connect to a viewer instance.
+    rec->connect_tcp("192.168.10.15:9876").exit_on_failure();
 
     subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
         "/point_cloud_hasco_4lidars", rclcpp::SensorDataQoS(),
