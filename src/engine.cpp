@@ -1,13 +1,36 @@
 #include "rerun-insider/engine.hpp"
 
 Insider::Insider(std::string node_name) : Node(node_name) {
+  auto logger = this->get_logger();
+
+  // Lidar subscription topic
+  this->declare_parameter("subscription_topic_lidar", "");
+
+  // Rerun viewer address
+  this->declare_parameter("rerun_viewer_addr", "");
+
+  // Lidar subscription topic
+  auto subscription_topic_lidar =
+      this->get_parameter("subscription_topic_lidar")
+          .get_parameter_value()
+          .get<std::string>();
+  RCLCPP_INFO(logger, "Lidar topic: %s ", subscription_topic_lidar.c_str());
+
+  // Rerun viewer address
+  auto rerun_viewer_addr = this->get_parameter("rerun_viewer_addr")
+                               .get_parameter_value()
+                               .get<std::string>();
+  RCLCPP_INFO(logger, "Rerun viewer address: %s ", rerun_viewer_addr.c_str());
+
   // Init rerun client, try to connect to a viewer instance.
   this->rec = new rerun::RecordingStream("rerun-insider");
-  this->rec->connect_tcp("192.168.10.15:9876").exit_on_failure();
+  this->rec->connect_tcp(rerun_viewer_addr).exit_on_failure();
 
+  // Init subscriptions
   sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "/point_cloud_hasco_4lidars", rclcpp::SensorDataQoS(),
+      subscription_topic_lidar, rclcpp::SensorDataQoS(),
       std::bind(&Insider::callback_lidar, this, _1));
+
   RCLCPP_INFO(this->get_logger(), "Initialized");
 }
 
