@@ -4,14 +4,23 @@
 Insider::Insider(std::string node_name) : Node(node_name) {
   auto logger = this->get_logger();
 
+  // Rerun viewer address
+  this->declare_parameter("rerun_viewer_addr", "");
+
   // Subscription topic lidar
   this->declare_parameter("subscription_topic_lidar", "");
 
   // Subscription topic camera
   this->declare_parameter("subscription_topic_camera", "");
 
+  // Subscription topic odometry
+  this->declare_parameter("subscription_topic_odometry", "");
+
   // Rerun viewer address
-  this->declare_parameter("rerun_viewer_addr", "");
+  auto rerun_viewer_addr = this->get_parameter("rerun_viewer_addr")
+                               .get_parameter_value()
+                               .get<std::string>();
+  RCLCPP_INFO(logger, "Rerun viewer address: %s ", rerun_viewer_addr.c_str());
 
   // Subscription topic lidar
   auto subscription_topic_lidar =
@@ -27,11 +36,11 @@ Insider::Insider(std::string node_name) : Node(node_name) {
           .get<std::string>();
   RCLCPP_INFO(logger, "Lidar topic: %s ", subscription_topic_camera.c_str());
 
-  // Rerun viewer address
-  auto rerun_viewer_addr = this->get_parameter("rerun_viewer_addr")
-                               .get_parameter_value()
-                               .get<std::string>();
-  RCLCPP_INFO(logger, "Rerun viewer address: %s ", rerun_viewer_addr.c_str());
+  // Subscription topic odometry
+  auto subscription_topic_odometry =
+      this->get_parameter("subscription_topic_odometry")
+          .get_parameter_value()
+          .get<std::string>();
 
   // Init rerun client, try to connect to a viewer instance.
   this->rec = new rerun::RecordingStream("rerun-insider");
@@ -45,6 +54,10 @@ Insider::Insider(std::string node_name) : Node(node_name) {
   sub_cam = this->create_subscription<sensor_msgs::msg::Image>(
       subscription_topic_camera, rclcpp::SensorDataQoS(),
       std::bind(&Insider::callback_camera, this, _1));
+
+  sub_odom = this->create_subscription<nav_msgs::msg::Odometry>(
+      subscription_topic_odometry, rclcpp::SensorDataQoS(),
+      std::bind(&Insider::callback_odom, this, _1));
 
   RCLCPP_INFO(this->get_logger(), "Initialized");
 }
@@ -88,4 +101,21 @@ void Insider::callback_camera(
     data.swap(compressed_msg->data);
   }
   rec->log_static("image", rerun::EncodedImage::from_bytes(data));
+}
+void Insider::callback_odom(
+    const nav_msgs::msg::Odometry::ConstSharedPtr &msg) const {
+  rec->log_static("/odometry/pose/position/x",
+                  rerun::Scalar(msg->pose.pose.position.x));
+  rec->log_static("/odometry/pose/position/y",
+                  rerun::Scalar(msg->pose.pose.position.y));
+  rec->log_static("/odometry/pose/position/z",
+                  rerun::Scalar(msg->pose.pose.position.z));
+  rec->log_static("/odometry/pose/orientation/x",
+                  rerun::Scalar(msg->pose.pose.orientation.x));
+  rec->log_static("/odometry/pose/orientation/y",
+                  rerun::Scalar(msg->pose.pose.orientation.y));
+  rec->log_static("/odometry/pose/orientation/z",
+                  rerun::Scalar(msg->pose.pose.orientation.z));
+  rec->log_static("/odometry/pose/orientation/w",
+                  rerun::Scalar(msg->pose.pose.orientation.w));
 }
