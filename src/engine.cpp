@@ -1,6 +1,10 @@
 #include "rerun-insider/engine.hpp"
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/opencv.hpp"
+#include <chrono>
+
+using namespace std::chrono_literals;
+
 Insider::Insider(std::string node_name) : Node(node_name) {
   auto logger = this->get_logger();
 
@@ -34,17 +38,19 @@ Insider::Insider(std::string node_name) : Node(node_name) {
       this->get_parameter("subscription_topic_camera")
           .get_parameter_value()
           .get<std::string>();
-  RCLCPP_INFO(logger, "Lidar topic: %s ", subscription_topic_camera.c_str());
+  RCLCPP_INFO(logger, "Camera topic: %s ", subscription_topic_camera.c_str());
 
   // Subscription topic odometry
   auto subscription_topic_odometry =
       this->get_parameter("subscription_topic_odometry")
           .get_parameter_value()
           .get<std::string>();
+  RCLCPP_INFO(logger, "Odometry topic: %s ",
+              subscription_topic_odometry.c_str());
 
   // Init rerun client, try to connect to a viewer instance.
   this->rec = new rerun::RecordingStream("rerun-insider");
-  this->rec->connect_tcp(rerun_viewer_addr).exit_on_failure();
+  this->rec->connect_tcp(rerun_viewer_addr, 0.1).exit_on_failure();
 
   // Init subscriptions
   sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -58,6 +64,10 @@ Insider::Insider(std::string node_name) : Node(node_name) {
   sub_odom = this->create_subscription<nav_msgs::msg::Odometry>(
       subscription_topic_odometry, rclcpp::SensorDataQoS(),
       std::bind(&Insider::callback_odom, this, _1));
+
+  // Callback of timer
+  this->timer =
+      this->create_wall_timer(100ms, std::bind(&Insider::callback_timer, this));
 
   RCLCPP_INFO(this->get_logger(), "Initialized");
 }
@@ -102,20 +112,11 @@ void Insider::callback_camera(
   }
   rec->log_static("image", rerun::EncodedImage::from_bytes(data));
 }
+
 void Insider::callback_odom(
-    const nav_msgs::msg::Odometry::ConstSharedPtr &msg) const {
-  rec->log_static("/odometry/pose/position/x",
-                  rerun::Scalar(msg->pose.pose.position.x));
-  rec->log_static("/odometry/pose/position/y",
-                  rerun::Scalar(msg->pose.pose.position.y));
-  rec->log_static("/odometry/pose/position/z",
-                  rerun::Scalar(msg->pose.pose.position.z));
-  rec->log_static("/odometry/pose/orientation/x",
-                  rerun::Scalar(msg->pose.pose.orientation.x));
-  rec->log_static("/odometry/pose/orientation/y",
-                  rerun::Scalar(msg->pose.pose.orientation.y));
-  rec->log_static("/odometry/pose/orientation/z",
-                  rerun::Scalar(msg->pose.pose.orientation.z));
-  rec->log_static("/odometry/pose/orientation/w",
-                  rerun::Scalar(msg->pose.pose.orientation.w));
+    const nav_msgs::msg::Odometry::ConstSharedPtr &msg) {
+  this->odom_x = msg->pose.pose.position.x;
+}
+void Insider::callback_timer() {
+  rec->log_static("/odometry/pose/position/x", rerun::Scalar(odom_x));
 }

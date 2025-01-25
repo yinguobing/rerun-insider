@@ -26,7 +26,10 @@ private:
   callback_camera(const sensor_msgs::msg::Image::ConstSharedPtr &msg) const;
 
   // Callback for odometery data
-  void callback_odom(const nav_msgs::msg::Odometry::ConstSharedPtr &msg) const;
+  void callback_odom(const nav_msgs::msg::Odometry::ConstSharedPtr &msg);
+
+  // Callback timer
+  void callback_timer();
 
   // Subcription of lidar point cloud
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar;
@@ -37,6 +40,12 @@ private:
   // Subcription of odometery data
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom;
 
+  // Timer
+  rclcpp::TimerBase::SharedPtr timer;
+
   // Rerun recording stream
   rerun::RecordingStream *rec;
+
+  // A time window for odometry data
+  float odom_x;
 };
