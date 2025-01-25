@@ -2,6 +2,8 @@
 /rerun_insider:
   ros__parameters:
     # Lidar topic
-    subscription_topic_lidar: "/lidar"
+    subscription_topic_lidar: "/point_cloud"
+    # Camera topic
+    subscription_topic_camera: "/camera"
     # Rerun viewer address
     rerun_viewer_addr: "127.0.0.1:9876"
