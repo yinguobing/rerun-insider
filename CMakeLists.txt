@@ -10,13 +10,13 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Download Rerun SDK
-include(FetchContent)
-FetchContent_Declare(
-  rerun_sdk
-  URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
-)
-FetchContent_MakeAvailable(rerun_sdk)
+# # Download Rerun SDK
+# include(FetchContent)
+# FetchContent_Declare(
+#   rerun_sdk
+#   URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
+# )
+# FetchContent_MakeAvailable(rerun_sdk)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -24,6 +24,7 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(rerun_sdk REQUIRED)
 
 # The node. Require C99 and C++17.
 add_executable(insider src/main.cpp src/engine.cpp)
