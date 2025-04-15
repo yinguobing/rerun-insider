@@ -5,7 +5,9 @@
 
 using namespace std::chrono_literals;
 
-Insider::Insider(std::string node_name) : Node(node_name) {
+Insider::Insider(const std::string &node_name,
+                 const rclcpp::NodeOptions &options)
+    : rclcpp::Node(node_name, options) {
   auto logger = this->get_logger();
 
   // Rerun viewer address
@@ -25,6 +27,12 @@ Insider::Insider(std::string node_name) : Node(node_name) {
                                .get_parameter_value()
                                .get<std::string>();
   RCLCPP_INFO(logger, "Rerun viewer address: %s ", rerun_viewer_addr.c_str());
+
+  // Create callback groups
+  auto callback_group_cam =
+      create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+  auto callback_group_lidar =
+      create_callback_group(rclcpp::CallbackGroupType::Reentrant);
 
   // Subscription topic lidar
   auto subscription_topic_lidar =
@@ -53,13 +61,17 @@ Insider::Insider(std::string node_name) : Node(node_name) {
   this->rec->connect_tcp(rerun_viewer_addr, 0.1).exit_on_failure();
 
   // Init subscriptions
+  rclcpp::SubscriptionOptions options_sub_lidar;
+  options_sub_lidar.callback_group = callback_group_lidar;
   sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(
       subscription_topic_lidar, rclcpp::SensorDataQoS(),
-      std::bind(&Insider::callback_lidar, this, _1));
+      std::bind(&Insider::callback_lidar, this, _1), options_sub_lidar);
 
+  rclcpp::SubscriptionOptions options_sub_cam;
+  options_sub_cam.callback_group = callback_group_cam;
   sub_cam = this->create_subscription<sensor_msgs::msg::Image>(
       subscription_topic_camera, rclcpp::SensorDataQoS(),
-      std::bind(&Insider::callback_camera, this, _1));
+      std::bind(&Insider::callback_camera, this, _1), options_sub_cam);
 
   sub_odom = this->create_subscription<nav_msgs::msg::Odometry>(
       subscription_topic_odometry, rclcpp::SensorDataQoS(),
@@ -67,7 +79,7 @@ Insider::Insider(std::string node_name) : Node(node_name) {
 
   // Callback of timer
   this->timer =
-      this->create_wall_timer(100ms, std::bind(&Insider::callback_timer, this));
+      this->create_wall_timer(50ms, std::bind(&Insider::callback_timer, this));
 
   RCLCPP_INFO(this->get_logger(), "Initialized");
 }
@@ -78,6 +90,10 @@ void Insider::callback_lidar(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg) const {
   std::vector<rerun::Position3D> points;
   std::vector<rerun::Color> colors;
+
+  int num_points = msg->width * msg->height;
+  points.reserve(num_points);
+  colors.reserve(num_points);
 
   // Populate the point cloud data.
   sensor_msgs::PointCloud2ConstIterator<int16_t> iter(*msg, "x");
@@ -91,9 +107,10 @@ void Insider::callback_lidar(
   }
 
   // Log the entity with our data, using the `Points3D`
-  rec->log_static(
-      "point-cloud",
-      rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
+  rec->set_time_seconds("main", msg->header.stamp.sec +
+                                    msg->header.stamp.nanosec * 1e-9);
+  rec->log("point-cloud",
+           rerun::Points3D(points).with_colors(colors).with_radii({0.01f}));
 }
 
 void Insider::callback_camera(
@@ -110,7 +127,9 @@ void Insider::callback_camera(
     auto compressed_msg = img->toCompressedImageMsg(cv_bridge::Format::JPEG);
     data.swap(compressed_msg->data);
   }
-  rec->log_static("image", rerun::EncodedImage::from_bytes(data));
+  rec->set_time_seconds("main", msg->header.stamp.sec +
+                                    msg->header.stamp.nanosec * 1e-9);
+  rec->log("image", rerun::EncodedImage::from_bytes(data));
 }
 
 void Insider::callback_odom(
@@ -118,5 +137,5 @@ void Insider::callback_odom(
   this->odom_x = msg->pose.pose.position.x;
 }
 void Insider::callback_timer() {
-  rec->log_static("/odometry/pose/position/x", rerun::Scalar(odom_x));
+  rec->log("/odometry/pose/position/x", rerun::Scalar(odom_x));
 }

@@ -13,7 +13,7 @@ using std::placeholders::_1;
 
 class Insider : public rclcpp::Node {
 public:
-  Insider(std::string node_name);
+  Insider(const std::string &node_name, const rclcpp::NodeOptions &options);
   ~Insider();
 
 private:
